@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>โครงการแก้มลิง - เครื่องมือวิเคราะห์พื้นที่</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        :root { --main: #0076a1; --soft: #55c4d3; --bg: #e3f2fd; }
+        body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        .top-nav { background: white; border-radius: 50px; padding: 10px 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .brand { display: flex; align-items: center; gap: 15px; }
+        .brand img { width: 45px; }
+        .brand-text h1 { margin: 0; font-size: 1.4rem; color: var(--main); }
+        .brand-text p { margin: 0; font-size: 0.8rem; color: #888; }
+
+        .main-layout { display: flex; gap: 20px; flex-wrap: wrap; }
+        .map-section { flex: 1.5; min-width: 320px; position: relative; background: white; border-radius: 25px; padding: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        #map { height: 500px; width: 100%; border-radius: 20px; z-index: 1; }
+
+        /* ปุ่ม GPS ระบุตำแหน่งจริง */
+        .gps-btn { position: absolute; top: 25px; right: 25px; z-index: 1000; width: 50px; height: 50px; border-radius: 15px; border: none; background: white; color: var(--main); font-size: 1.5rem; box-shadow: 0 2px 15px rgba(0,0,0,0.2); cursor: pointer; transition: 0.3s; }
+        .gps-btn:hover { background: var(--main); color: white; }
+
+        .sidebar { flex: 1; min-width: 300px; background: white; border-radius: 25px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .card-header { font-weight: bold; font-size: 1.2rem; margin-bottom: 20px; border-bottom: 1.5px solid #eee; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: #444; }
+        .input-group input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; font-size: 1rem; box-sizing: border-box; transition: 0.3s; }
+        .input-group input:focus { border-color: var(--soft); outline: none; box-shadow: 0 0 8px rgba(85, 196, 211, 0.2); }
+
+        .btn-action { width: 100%; padding: 15px; border-radius: 15px; border: none; background: var(--main); color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+        .result-box { border: 2.5px solid var(--soft); border-radius: 20px; padding: 20px; text-align: center; background: #faffff; margin-bottom: 20px; }
+        .result-box h2 { font-size: 3rem; margin: 5px 0; color: var(--main); }
+
+        .analysis-card { background: #f8f9fa; border-radius: 20px; padding: 20px; border: 1px dashed #ccc; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 0.95rem; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .stat-row strong { color: var(--main); }
+
+        /* ป้ายแสดงระยะทางเมตร */
+        .dist-label { background: #27ae60; color: white; border: 1.5px solid white; border-radius: 8px; padding: 2px 8px; font-size: 11px; font-weight: bold; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); pointer-events: none; }
+
+        @media (max-width: 768px) { .main-layout { flex-direction: column; } #map { height: 400px; } .top-nav { padding: 10px 15px; } .brand-text h1 { font-size: 1rem; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="top-nav">
+        <div class="brand">
+            <img src="https://cdn-icons-png.flaticon.com/512/619/619153.png" alt="logo">
+            <div class="brand-text">
+                <h1>โครงการแก้มลิง</h1>
+                <p>เครื่องมือวิเคราะห์และคำนวณพื้นที่กักเก็บน้ำ</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <section class="map-section">
+            <div id="map"></div>
+            <button id="locate-me" class="gps-btn" title="ระบุตำแหน่งของฉัน">
+                <i class="fa-solid fa-location-crosshairs"></i>
+            </button>
+        </section>
+
+        <aside class="sidebar">
+            <div class="card-header"><i class="fa-solid fa-sliders"></i> แผงควบคุม</div>
+            
+            <div class="input-group">
+                <label>พื้นที่จากการวาด (ตร.ม.)</label>
+                <input type="text" id="area-val" placeholder="รอค่าจากแผนที่..." readonly>
+            </div>
+
+            <div class="input-group">
+                <label>ความลึกเป้าหมาย (เมตร)</label>
+                <input type="number" id="depth-val" value="3">
+            </div>
+
+            <button class="btn-action" id="btn-calc">
+                <i class="fa-solid fa-arrows-rotate"></i> คำนวณปริมาตรน้ำ
+            </button>
+
+            <div class="result-box">
+                <small>ปริมาณน้ำกักเก็บสูงสุด</small>
+                <h2 id="vol-res">0</h2>
+                <span>ลูกบาศก์เมตร (m³)</span>
+            </div>
+
+            <div class="analysis-card">
+                <div class="input-group">
+                    <label>ราคาค่าขุดเฉลี่ย (บาท/ลบ.ม.)</label>
+                    <input type="number" id="price-unit" value="35">
+                </div>
+                <div class="stats">
+                    <div class="stat-row">
+                        <span><i class="fa-solid fa-money-bill-trend-up"></i> งบประมาณเบื้องต้น:</span>
+                        <strong id="cost-res">0</strong> บาท
+                    </div>
+                    <div class="stat-row">
+                        <span><i class="fa-solid fa-fish"></i> เลี้ยงปลาได้ประมาณ:</span>
+                        <strong id="fish-res">0</strong> ตัว
+                    </div>
+                </div>
+                <p style="font-size: 0.7rem; color: #999; margin-top: 10px;">*อ้างอิงความหนาแน่น 1-2 ตัว ต่อ 1 ลบ.ม.</p>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // แผนที่ดาวเทียม Google
+        var map = L.map('map').setView([13.75, 100.5], 6);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']
+        }).addTo(map);
+
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // แถบเครื่องมือวาดรูปทรงต่างๆ
+        var drawControl = new L.Control.Draw({
+            draw: { polygon: true, rectangle: true, circle: true, polyline: true, marker: false },
+            edit: { featureGroup: drawnItems }
+        });
+        map.addControl(drawControl);
+
+        var currentArea = 0;
+
+        // ระบบวัดระยะเมตรและคำนวณพื้นที่
+        map.on(L.Draw.Event.CREATED, function (e) {
+            drawnItems.clearLayers();
+            var layer = e.layer;
+            var type = e.layerType;
+            var pts;
+
+            if (type === 'circle') {
+                pts = [layer.getLatLng()];
+                var radius = layer.getRadius();
+                currentArea = Math.PI * radius * radius;
+                L.marker(pts[0], { 
+                    icon: L.divIcon({ className: 'dist-label', html: 'รัศมี: ' + radius.toFixed(1) + ' m' }) 
+                }).addTo(drawnItems);
+            } else {
+                pts = (type === 'polyline') ? layer.getLatLngs() : layer.getLatLngs()[0];
+                if (type !== 'polyline') currentArea = L.GeometryUtil.geodesicArea(pts);
+                
+                // แสดงระยะห่างระหว่างจุดเป็นเมตร
+                for (var i = 0; i < pts.length - (type === 'polyline' ? 1 : 0); i++) {
+                    var n = (i + 1) % pts.length;
+                    var d = pts[i].distanceTo(pts[n]);
+                    var mid = L.latLng((pts[i].lat + pts[n].lat)/2, (pts[i].lng + pts[n].lng)/2);
+                    L.marker(mid, { 
+                        icon: L.divIcon({ className: 'dist-label', html: d.toFixed(1) + ' m' }) 
+                    }).addTo(drawnItems);
+                }
+            }
+
+            document.getElementById('area-val').value = currentArea.toFixed(2);
+            drawnItems.addLayer(layer);
+            calculate();
+        });
+
+        // ระบบวิเคราะห์ความคุ้มค่า
+        function calculate() {
+            var depth = document.getElementById('depth-val').value;
+            var price = document.getElementById('price-unit').value;
+            var vol = currentArea * depth;
+            var cost = vol * price;
+            var fish = vol * 1.5;
+
+            document.getElementById('vol-res').innerText = vol.toLocaleString(undefined, {maximumFractionDigits: 0});
+            document.getElementById('cost-res').innerText = cost.toLocaleString(undefined, {maximumFractionDigits: 0});
+            document.getElementById('fish-res').innerText = fish.toLocaleString(undefined, {maximumFractionDigits: 0});
+        }
+
+        // ปุ่ม GPS ระบุตำแหน่งจริง
+        document.getElementById('locate-me').onclick = function() {
+            map.locate({setView: true, maxZoom: 18});
+        };
+
+        map.on('locationfound', function(e) {
+            L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+        });
+
+        map.on('locationerror', function() {
+            alert("ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาเปิด GPS และอนุญาตให้เบราว์เซอร์เข้าถึงตำแหน่งครับ");
+        });
+
+        document.getElementById('btn-calc').onclick = calculate;
+    });
+</script>
+
+</body>
+</html>
