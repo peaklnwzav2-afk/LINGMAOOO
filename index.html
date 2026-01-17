@@ -2,38 +2,234 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>LINGMAP - เครื่องมือวิเคราะห์พื้นที่</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINGMAP - วิเคราะห์พื้นที่กักเก็บน้ำ</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        :root { --main: #0076a1; --soft: #55c4d3; --bg: #e3f2fd; }
+        /* CSS ดีไซน์ตามรูปภาพ */
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+
+        :root { --main: #0076a1; --soft: #55c4d3; --bg: #f0f8ff; }
         body { font-family: 'Kanit', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
 
-        .container { max-width: 1200px; margin: 0 auto; }
-        .top-nav { background: white; border-radius: 50px; padding: 10px 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .top-nav { background: white; border-radius: 50px; padding: 10px 30px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .brand { display: flex; align-items: center; gap: 15px; }
-        .brand img { width: 45px; }
-        .brand-text h1 { margin: 0; font-size: 1.4rem; color: var(--main); }
-        .brand-text p { margin: 0; font-size: 0.8rem; color: #888; }
+        .brand img { width: 40px; }
+        .brand h1 { margin: 0; font-size: 1.2rem; color: var(--main); }
+        .brand p { margin: 0; font-size: 0.7rem; color: #777; }
 
-        .main-layout { display: flex; gap: 20px; flex-wrap: wrap; }
-        .map-section { flex: 1.5; min-width: 320px; position: relative; background: white; border-radius: 25px; padding: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        #map { height: 500px; width: 100%; border-radius: 20px; z-index: 1; }
+        .main-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        
+        .map-section { position: relative; border-radius: 25px; overflow: hidden; height: 550px; border: 4px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        #map { height: 100%; width: 100%; z-index: 1; }
 
-        /* ปุ่ม GPS ระบุตำแหน่งจริง */
-        .gps-btn { position: absolute; top: 25px; right: 25px; z-index: 1000; width: 50px; height: 50px; border-radius: 15px; border: none; background: white; color: var(--main); font-size: 1.5rem; box-shadow: 0 2px 15px rgba(0,0,0,0.2); cursor: pointer; transition: 0.3s; }
-        .gps-btn:hover { background: var(--main); color: white; }
+        .gps-button { position: absolute; top: 15px; right: 15px; z-index: 1000; background: white; border: none; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; color: var(--main); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-        .sidebar { flex: 1; min-width: 300px; background: white; border-radius: 25px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .card-header { font-weight: bold; font-size: 1.2rem; margin-bottom: 20px; border-bottom: 1.5px solid #eee; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .control-panel { background: white; border-radius: 25px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 10px; font-family: 'Kanit'; box-sizing: border-box; }
 
-        .input-group { margin-bottom: 15px; }
+        .btn-calc { width: 100%; background: var(--main); color: white; border: none; padding: 14px; border-radius: 15px; cursor: pointer; margin: 10px 0; font-size: 1rem; }
+
+        .result-card { border: 2px solid var(--soft); border-radius: 20px; padding: 15px; text-align: center; background: #f9feff; margin: 15px 0; }
+        .result-card h1 { margin: 5px 0; color: var(--main); font-size: 2.2rem; }
+
+        .slope-info { background: #f8f9fa; padding: 12px; border-radius: 15px; border-left: 5px solid #ccc; font-size: 0.85rem; }
+        .warning { color: #d32f2f; font-weight: 600; }
+
+        .stat-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.9rem; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+
+        /* ป้ายบอกระยะเมตร */
+        .dist-label { background: white; border: 1px solid var(--main); border-radius: 4px; padding: 2px 5px; font-weight: bold; color: var(--main); font-size: 11px; white-space: nowrap; }
+
+        @media (max-width: 768px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .map-section { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="top-nav">
+        <div class="brand">
+            <img src="https://cdn-icons-png.flaticon.com/512/619/619153.png" alt="logo">
+            <div class="brand-text">
+                <h1>LINGMAP</h1>
+                <p>เครื่องมือวิเคราะห์และคำนวณพื้นที่กักเก็บน้ำ</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <section class="map-section">
+            <div id="map"></div>
+            <button id="locate-me" class="gps-button"><i class="fa-solid fa-crosshairs"></i></button>
+        </section>
+
+        <aside class="control-panel">
+            <h3><i class="fa-solid fa-wrench"></i> แผงควบคุม</h3>
+            
+            <div class="input-group">
+                <label>พื้นที่จากการวาด (ตร.ม.)</label>
+                <input type="text" id="area-val" readonly placeholder="รอค่าจากแผนที่...">
+            </div>
+
+            <div class="input-group">
+                <label>ความลึกเป้าหมาย (ม.)</label>
+                <input type="number" id="depth-input" value="3">
+            </div>
+
+            <div class="input-group">
+                <label>ประเภทดิน (ป้องกันดินถล่ม)</label>
+                <select id="soil-type">
+                    <option value="1">ดินเหนียว (แข็งแรงมาก - Slope 1:1)</option>
+                    <option value="1.5">ดินร่วน (ปานกลาง - Slope 1:1.5)</option>
+                    <option value="2">ดินทราย (เสี่ยงถล่ม - Slope 1:2)</option>
+                </select>
+            </div>
+
+            <button class="btn-calc" id="btn-calculate">
+                <i class="fa-solid fa-sync"></i> คำนวณปริมาตรน้ำ
+            </button>
+
+            <div class="result-card">
+                <p>ปริมาณน้ำกักเก็บสุทธิ (หักลบ Slope)</p>
+                <h1 id="volume-res">0</h1>
+                <span>ลูกบาศก์เมตร (m³)</span>
+            </div>
+
+            <div class="slope-info" id="slope-card">
+                <p><strong>มุมขุดที่แนะนำ:</strong> <span id="angle-text">--</span></p>
+                <p id="safety-msg" class="warning">กรุณาวาดพื้นที่เพื่อรับคำแนะนำ</p>
+            </div>
+
+            <div class="footer-stats">
+                <div class="input-group" style="margin-top:10px;">
+                    <label>ราคาค่าขุด (บาท/ลบ.ม.)</label>
+                    <input type="number" id="price-input" value="35">
+                </div>
+                <div class="stat-row">
+                    <span>ค่าขุดเบื้องต้น:</span> <span id="cost-res">0 บาท</span>
+                </div>
+                <div class="stat-row">
+                    <span>เลี้ยงปลาได้ประมาณ:</span> <span id="fish-res">0 ตัว</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+<script>
+    // ตั้งค่าแผนที่ Google Satellite
+    var map = L.map('map').setView([13.7367, 100.5231], 6);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']
+    }).addTo(map);
+
+    var drawnItems = new L.FeatureGroup().addTo(map);
+    var currentArea = 0;
+
+    var drawControl = new L.Control.Draw({
+        draw: {
+            polyline: { shapeOptions: { color: '#0076a1' } },
+            polygon: { showArea: true, metric: true, shapeOptions: { color: '#0076a1' } },
+            rectangle: { shapeOptions: { color: '#0076a1' } }, 
+            circle: { metric: true }, 
+            marker: false
+        },
+        edit: { featureGroup: drawnItems }
+    });
+    map.addControl(drawControl);
+
+    // ฟังก์ชันคำนวณปริมาณน้ำหัก Slope
+    function calculateAll() {
+        var d = parseFloat(document.getElementById('depth-input').value) || 0;
+        var z = parseFloat(document.getElementById('soil-type').value);
+        var price = parseFloat(document.getElementById('price-input').value) || 0;
+
+        var angleMap = { "1": "45°", "1.5": "33°", "2": "26°" };
+        document.getElementById('angle-text').innerText = angleMap[z] || "--";
+
+        if (currentArea > 0) {
+            var side = Math.sqrt(currentArea);
+            var bottomSide = Math.max(0, side - (2 * z * d));
+            var a2 = Math.pow(bottomSide, 2);
+            var volume = (d / 3) * (currentArea + a2 + Math.sqrt(currentArea * a2));
+
+            document.getElementById('volume-res').innerText = Math.round(volume).toLocaleString();
+            document.getElementById('cost-res').innerText = Math.round(volume * price).toLocaleString() + " บาท";
+            document.getElementById('fish-res').innerText = Math.round(volume * 10).toLocaleString();
+        }
+    }
+
+    // ฟังก์ชันสร้างป้ายบอกระยะเมตร
+    function addDistanceMarkers(layer) {
+        var latlngs = layer.getLatLngs();
+        if (latlngs[0] instanceof Array) latlngs = latlngs[0];
+
+        for (var i = 0; i < latlngs.length; i++) {
+            var nextIndex = (i + 1) % latlngs.length;
+            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon) && i === latlngs.length - 1) break;
+
+            var p1 = latlngs[i];
+            var p2 = latlngs[nextIndex];
+            var dist = p1.distanceTo(p2);
+
+            L.marker([(p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2], {
+                icon: L.divIcon({ 
+                    className: 'dist-label', 
+                    html: dist.toFixed(1) + ' ม.', 
+                    iconSize: [45, 20] 
+                }),
+                interactive: false
+            }).addTo(drawnItems);
+        }
+    }
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        drawnItems.clearLayers();
+        var layer = e.layer;
+        drawnItems.addLayer(layer);
+
+        if (e.layerType === 'circle') {
+            var radius = layer.getRadius();
+            currentArea = Math.PI * Math.pow(radius, 2);
+        } else {
+            currentArea = turf.area(layer.toGeoJSON());
+            addDistanceMarkers(layer);
+        }
+        
+        document.getElementById('area-val').value = Math.round(currentArea).toLocaleString() + " ตร.ม.";
+        calculateAll();
+    });
+
+    // ปุ่ม GPS
+    document.getElementById('locate-me').onclick = function() {
+        map.locate({setView: true, maxZoom: 16});
+    };
+
+    map.on('locationfound', function(e) {
+        L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+    });
+
+    setTimeout(() => map.invalidateSize(), 500);
+    document.getElementById('soil-type').onchange = calculateAll;
+    document.getElementById('depth-input').oninput = calculateAll;
+    document.getElementById('btn-calculate').onclick = calculateAll;
+</script>
+
+</body>
+</html>
         .input-group label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: #444; }
         .input-group input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; font-size: 1rem; box-sizing: border-box; transition: 0.3s; }
         .input-group input:focus { border-color: var(--soft); outline: none; box-shadow: 0 0 8px rgba(85, 196, 211, 0.2); }
